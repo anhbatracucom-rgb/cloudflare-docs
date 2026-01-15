@@ -232,8 +232,9 @@ With persistent storage, the transport preserves:
 - Session ID across reconnections
 - Protocol version negotiation state
 - Initialization status
+- Client capabilities (such as elicitation and sampling support)
 
-This allows MCP clients to reconnect and resume their session in the event of a connection loss.
+This allows MCP clients to reconnect and resume their session in the event of a connection loss. Additionally, when an Agent hibernates and restarts in serverless environments, client capabilities are automatically restored, ensuring advanced MCP features like elicitation continue to function correctly.
 
 ### WorkerTransport
 
@@ -386,7 +387,11 @@ interface MCPStorageApi {
 interface TransportState {
 	sessionId?: string;
 	initialized: boolean;
-	protocolVersion?: ProtocolVersion;
+	initializeParams?: {
+		capabilities: ClientCapabilities;
+		clientInfo: { name: string; version: string };
+		protocolVersion: string;
+	};
 }
 ```
 
@@ -408,6 +413,23 @@ const transport = new WorkerTransport({
 ```
 
 </TypeScriptExample>
+
+When using persistent storage, the `WorkerTransport` automatically stores and restores:
+
+- **sessionId** — The unique session identifier
+- **initialized** — Whether the MCP session has completed initialization
+- **initializeParams** — The complete initialization parameters from the client, including:
+  - **capabilities** — Client capabilities such as support for [elicitation](https://modelcontextprotocol.io/specification/draft/client/elicitation) and [sampling](https://modelcontextprotocol.io/specification/draft/client/sampling)
+  - **clientInfo** — Information about the connecting client (name and version)
+  - **protocolVersion** — The negotiated MCP protocol version
+
+The `initializeParams` field is particularly important for serverless environments. When a Durable Object or Agent hibernates and restarts, the `WorkerTransport` automatically replays the initialization request to restore client capabilities on the MCP Server instance. This ensures features like elicitation continue to work correctly after cold starts.
+
+:::note[Backward Compatibility]
+
+The `initializeParams` field is optional to maintain backward compatibility. If you restore state that was persisted before this field was added, the transport will still function correctly, but client capabilities will not be available until the client reconnects and re-initializes.
+
+:::
 
 ## Authentication Context
 
