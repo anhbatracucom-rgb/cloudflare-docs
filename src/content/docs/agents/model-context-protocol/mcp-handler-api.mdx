@@ -158,7 +158,7 @@ Each request to this MCP server creates a new session. The server doesn't mainta
 
 ## Stateful MCP Servers
 
-For stateful MCP servers that need to maintain session state across multiple requests, you can use the `createMcpHandler` function with a `WorkerTransport` instance directly in an `Agent`. This is useful if you want to make use of advanced client features like elicitation and sampling.
+For stateful MCP servers that need to maintain session state across multiple requests, you can use the `createMcpHandler` function with a `WorkerTransport` instance directly in an `Agent`. This is useful if you want to make use of advanced client features like [elicitation](https://modelcontextprotocol.io/specification/draft/client/elicitation) and [sampling](https://modelcontextprotocol.io/specification/draft/client/sampling).
 
 Provide a custom `WorkerTransport` with persistent storage. View the [complete example on GitHub](https://github.com/cloudflare/agents/tree/main/examples/mcp-elicitation).
 
@@ -232,9 +232,10 @@ With persistent storage, the transport preserves:
 - Session ID across reconnections
 - Protocol version negotiation state
 - Initialization status
-- Client capabilities (such as elicitation and sampling support)
+- Client capabilities (including elicitation and sampling support)
+- Client information (name and version)
 
-This allows MCP clients to reconnect and resume their session in the event of a connection loss. Additionally, when an Agent hibernates and restarts in serverless environments, client capabilities are automatically restored, ensuring advanced MCP features like elicitation continue to function correctly.
+This allows MCP clients to reconnect and resume their session in the event of a connection loss. Importantly, client capabilities like [elicitation](https://modelcontextprotocol.io/specification/draft/client/elicitation) are persisted and restored, ensuring that capability-dependent features work correctly after serverless restarts.
 
 ### WorkerTransport
 
@@ -394,6 +395,12 @@ interface TransportState {
 	};
 }
 ```
+
+The `initializeParams` field stores the client capabilities, client information, and protocol version from the initial MCP handshake. When the transport is restored from storage (for example, after a serverless restart), these parameters are replayed to restore the client capabilities on the MCP Server instance. This ensures that capability-dependent features like elicitation continue to work after restarts.
+
+:::note[Backward Compatibility]
+The `initializeParams` field is optional. Existing stored state without this field will continue to work — the transport will simply start without restored client capabilities.
+:::
 
 <TypeScriptExample>
 
